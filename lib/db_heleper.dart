@@ -1,14 +1,13 @@
 import 'dart:io';
-
-import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-class DbHeleper {
-  DbHeleper._();
-  static DbHeleper getInstance() {
-    return DbHeleper._();
+class DbHelper {
+  DbHelper._();
+
+  static DbHelper getInstance() {
+    return DbHelper._();
   }
 
   static const DB_NAME = "todo.db";
@@ -16,7 +15,6 @@ class DbHeleper {
   static const ID = "id";
   static const CREATED_AT = "created_at";
   static const TITLE = "title";
-  static const DESCRIPTION = "description";
 
   Database? database;
 
@@ -31,24 +29,47 @@ class DbHeleper {
 
   Future<Database> openDB() async {
     Directory appDir = await getApplicationDocumentsDirectory();
-    String path = join(appDir.path, DB_NAME);
-    return openDatabase(
-      path,
-      version: 1,
-      onCreate: (Database db, version) {
-        db.execute('''CREATE TABLE $TABLE_NAME(
-        $ID INTEGER PRIMARY AUTOICREMENT,
-        $CREATED_AT TEXT NOT NULL,
-        $TITLE TEXT NOT NULL,
-        $DESCRIPTION TEXT NOT NULL
-        )
-''');
-      },
+    String dbpath = join(appDir.path, DB_NAME);
+    return openDatabase(dbpath, version: 1,
+        onCreate: (Database db, int version) {
+      return db.execute('''
+      CREATE TABLE $TABLE_NAME(
+      $ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      $CREATED_AT Text NOT NULL,
+      $TITLE TEXT NOT NULL
+      
+      )
+
+      ''');
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTodo() async {
+    var db = await initDB();
+    return await db.query(TABLE_NAME);
+  }
+
+  Future<int> addTodo(String title) async {
+    var db = await initDB();
+    return await db.insert(
+      TABLE_NAME,
+      {TITLE: title, CREATED_AT: DateTime.now().toIso8601String()},
     );
   }
 
-  void fetchTodo() {}
-  void addTodo() {}
-  void updateTodo() {}
-  void deleteTodo() {}
+  Future<int> updateTodo({required int id, required String title}) async {
+    var db = await initDB();
+    var result =
+        db.update(TABLE_NAME, {TITLE: title}, where: "$ID=?", whereArgs: [id]);
+    return result;
+  }
+
+  Future<int> deleteTodo(int id) async {
+    var db = await initDB();
+    return await db.delete(
+      TABLE_NAME,
+      where: '$ID = ?',
+      whereArgs: [id],
+    );
+  }
 }
