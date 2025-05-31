@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:todo_app/db_heleper.dart';
 import 'package:todo_app/show_modal_sheet.dart';
 
@@ -14,6 +15,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
   late final DbHelper dbHelper;
   List<Map<String, dynamic>> todos = [];
 
+  final dateTime =
+      DateFormat('EEEE, d MMMM '); // Full day name, day, full month
+
   static const Color backgroundColor = Color(0xff344FA1);
   static const Color lightBlue = Color(0xffA1C0F8);
   static const Color cardColor = Color(0xff031956);
@@ -28,6 +32,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   Future<void> fetchTodos() async {
     todos = await dbHelper.fetchTodo();
+    print(todos);
     setState(() {});
   }
 
@@ -37,15 +42,32 @@ class _TodoListScreenState extends State<TodoListScreen> {
     required VoidCallback onTap,
   }) {
     showModalBottomSheet(
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       context: context,
       builder: (_) {
-        return buildBottomSheet(
-          context,
-          onTap: onTap,
-          titleController: titleController,
-          titleText: titleText,
-          buttonText: buttonText,
+        return Container(
+          margin: EdgeInsets.all(15),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    lightBlue,
+                    backgroundColor,
+                  ],
+                  stops: [
+                    0.5,
+                    1.0
+                  ])),
+          child: buildBottomSheet(
+            context,
+            onTap: onTap,
+            titleController: titleController,
+            titleText: titleText,
+            buttonText: buttonText,
+          ),
         );
       },
     );
@@ -84,35 +106,53 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 style: TextStyle(fontSize: 16, color: lightBlue)),
             const SizedBox(height: 20),
             Expanded(
-              child: ListView.builder(
-                itemCount: todos.length,
-                itemBuilder: (context, index) {
-                  final todo = todos[index];
-                  return _buildTodoItem(
-                    title: todo[DbHelper.TITLE],
-                    onEdit: () {
-                      titleController.text = todo[DbHelper.TITLE].toString();
-                      _showTodoBottomSheet(
-                        titleText: "Update",
-                        buttonText: "Update",
-                        onTap: () async {
-                          await dbHelper.updateTodo(
-                            id: todo[DbHelper.ID],
-                            title: titleController.text,
+                child: todos.isNotEmpty
+                    ? ListView.builder(
+                        itemCount: todos.length,
+                        itemBuilder: (context, index) {
+                          final todo = todos[index];
+                          return _buildTodoItem(
+                            isChecked: todo[DbHelper.IS_DONE] == 1,
+                            onChanged: (newValue) async {
+                              await dbHelper.updateTodo(
+                                  id: todo[DbHelper.ID],
+                                  title: todo[DbHelper.TITLE],
+                                  isDone: newValue ?? false);
+                              setState(() {});
+                              fetchTodos();
+                            },
+                            title: todo[DbHelper.TITLE],
+                            dateTime: dateTime.format(
+                                DateTime.parse(todo[DbHelper.CREATED_AT])),
+                            onEdit: () {
+                              titleController.text =
+                                  todo[DbHelper.TITLE].toString();
+                              _showTodoBottomSheet(
+                                titleText: "Update Todo.!",
+                                buttonText: "Update",
+                                onTap: () async {
+                                  await dbHelper.updateTodo(
+                                    id: todo[DbHelper.ID],
+                                    title: titleController.text,
+                                  );
+                                  fetchTodos();
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                            onDelete: () async {
+                              await dbHelper.deleteTodo(todo[DbHelper.ID]);
+                              fetchTodos();
+                            },
                           );
-                          fetchTodos();
-                          Navigator.pop(context);
                         },
-                      );
-                    },
-                    onDelete: () async {
-                      await dbHelper.deleteTodo(todo[DbHelper.ID]);
-                      fetchTodos();
-                    },
-                  );
-                },
-              ),
-            ),
+                      )
+                    : Center(
+                        child: Text(
+                          "You dont have any todo.!",
+                          style: TextStyle(fontSize: 12, color: lightBlue),
+                        ),
+                      )),
           ],
         ),
       ),
@@ -122,12 +162,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
         onPressed: () {
           titleController.clear();
           _showTodoBottomSheet(
-            titleText: "Add",
-            buttonText: "Add",
+            titleText: "Add Todo.!",
+            buttonText: "save",
             onTap: () async {
               await dbHelper.addTodo(titleController.text);
               fetchTodos();
-              Navigator.pop(context);
+              Navigator.of(context).pop();
             },
           );
         },
@@ -137,7 +177,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
 
   Widget _buildCategoryWidgets() {
-    Widget _categoryCard(String label) => Container(
+    Widget categoryCard(String label) => Container(
           padding: const EdgeInsets.all(12),
           width: 161,
           height: 100,
@@ -169,37 +209,86 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
     return Row(
       children: [
-        _categoryCard("Business"),
+        categoryCard("Business"),
         const SizedBox(width: 8),
-        _categoryCard("Personal"),
+        categoryCard("Personal"),
       ],
     );
   }
 
   Widget _buildTodoItem({
     required String title,
+    required String dateTime,
+    required bool isChecked,
+    required ValueChanged<bool?> onChanged,
     required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
-    return ListTile(
-      leading: Checkbox(
-        value: false,
-        onChanged: (_) {},
-        shape: const CircleBorder(),
-        activeColor: lightBlue,
-        checkColor: cardColor,
-        side: const BorderSide(color: accentColor, width: 2),
+    return Container(
+      margin: EdgeInsets.only(top: 10),
+      width: double.infinity,
+      height: 65,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(25),
       ),
-      title: Text(title, style: const TextStyle(color: lightBlue)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          Checkbox(
+            value: isChecked,
+            onChanged: onChanged,
+            shape: const CircleBorder(),
+            activeColor: lightBlue,
+            checkColor: cardColor,
+            side: const BorderSide(color: accentColor, width: 2),
+          ),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: lightBlue,
+                    decoration: isChecked
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                    decorationColor: lightBlue,
+                    decorationThickness: 2,
+                  ),
+                ),
+                SizedBox(
+                  height: 5,
+                ),
+                Text(
+                  dateTime,
+                  style: TextStyle(fontSize: 10, color: lightBlue),
+                )
+              ],
+            ),
+          ),
           IconButton(
-              icon: const Icon(Icons.edit, color: lightBlue),
-              onPressed: onEdit),
+              onPressed: () {
+                onEdit();
+              },
+              icon: Icon(
+                Icons.edit,
+                color: lightBlue,
+              )),
           IconButton(
-              icon: const Icon(Icons.delete, color: accentColor),
-              onPressed: onDelete),
+              onPressed: () {
+                onDelete();
+              },
+              icon: Icon(
+                Icons.delete,
+                color: accentColor,
+              ))
         ],
       ),
     );

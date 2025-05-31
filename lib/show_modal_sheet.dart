@@ -17,17 +17,25 @@ Widget buildBottomSheet(BuildContext context,
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            titleText,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Center(
+            child: Text(
+              titleText,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: titleController,
             decoration: InputDecoration(
-              labelText: 'Title',
-              border: OutlineInputBorder(),
-            ),
+                labelText: 'Title',
+                labelStyle: TextStyle(color: Color(0xff031956)),
+                border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Color(0xff031956))),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Color(0xff031956)))),
           ),
           const SizedBox(height: 10),
           const SizedBox(height: 20),
@@ -36,15 +44,19 @@ Widget buildBottomSheet(BuildContext context,
             children: [
               SizedBox(
                 height: 40,
-                child: OutlinedButton(
+                child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.of(context).pop();
                   },
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(),
-                    side: BorderSide(color: Colors.grey),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xffA1C0F8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Cancel"),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(color: Color(0xff031956)),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -55,9 +67,14 @@ Widget buildBottomSheet(BuildContext context,
                     onTap();
                   },
                   style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(),
+                    backgroundColor: Color(0xff031956),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Save"),
+                  child: Text(
+                    buttonText,
+                    style: TextStyle(color: Color(0xffA1C0F8)),
+                  ),
                 ),
               ),
             ],

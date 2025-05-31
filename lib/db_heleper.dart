@@ -15,6 +15,7 @@ class DbHelper {
   static const ID = "id";
   static const CREATED_AT = "created_at";
   static const TITLE = "title";
+  static const IS_DONE = "is_done";
 
   Database? database;
 
@@ -36,7 +37,8 @@ class DbHelper {
       CREATE TABLE $TABLE_NAME(
       $ID INTEGER PRIMARY KEY AUTOINCREMENT,
       $CREATED_AT Text NOT NULL,
-      $TITLE TEXT NOT NULL
+      $TITLE TEXT NOT NULL,
+      $IS_DONE  INTEGER NOT NULL
       
       )
 
@@ -53,14 +55,20 @@ class DbHelper {
     var db = await initDB();
     return await db.insert(
       TABLE_NAME,
-      {TITLE: title, CREATED_AT: DateTime.now().toIso8601String()},
+      {
+        TITLE: title,
+        CREATED_AT: DateTime.now().toIso8601String(),
+        IS_DONE: 0,
+      },
     );
   }
 
-  Future<int> updateTodo({required int id, required String title}) async {
+  Future<int> updateTodo(
+      {required int id, required String title, bool? isDone}) async {
     var db = await initDB();
-    var result =
-        db.update(TABLE_NAME, {TITLE: title}, where: "$ID=?", whereArgs: [id]);
+    var result = db.update(
+        TABLE_NAME, {TITLE: title, if (isDone != null) IS_DONE: isDone ? 1 : 0},
+        where: "$ID=?", whereArgs: [id]);
     return result;
   }
 
