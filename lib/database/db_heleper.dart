@@ -51,9 +51,9 @@ class DbHelper {
     return await db.query(TABLE_NAME);
   }
 
-  Future<int> addTodo(String title) async {
+  Future<bool> addTodo(String title) async {
     var db = await initDB();
-    return await db.insert(
+    int rowEffected = await db.insert(
       TABLE_NAME,
       {
         TITLE: title,
@@ -61,23 +61,31 @@ class DbHelper {
         IS_DONE: 0,
       },
     );
+    return rowEffected > 0;
   }
 
-  Future<int> updateTodo(
-      {required int id, required String title, bool? isDone}) async {
+  Future<bool> updateTodo({required int id, required String title}) async {
     var db = await initDB();
-    var result = db.update(
-        TABLE_NAME, {TITLE: title, if (isDone != null) IS_DONE: isDone ? 1 : 0},
+    int rowEffected = await db.update(TABLE_NAME, {TITLE: title},
         where: "$ID=?", whereArgs: [id]);
-    return result;
+    return rowEffected > 0;
   }
 
-  Future<int> deleteTodo(int id) async {
+  Future<bool> isTodoCompleted({required int id, required bool isDone}) async {
     var db = await initDB();
-    return await db.delete(
+    int rowEffected = await db.update(TABLE_NAME, {IS_DONE: isDone ? 1 : 0},
+        where: "$ID=?", whereArgs: [id]);
+
+    return rowEffected > 0;
+  }
+
+  Future<bool> deleteTodo(int id) async {
+    var db = await initDB();
+    int rowEffected = await db.delete(
       TABLE_NAME,
       where: '$ID = ?',
       whereArgs: [id],
     );
+    return rowEffected > 0;
   }
 }

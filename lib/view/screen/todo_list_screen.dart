@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:todo_app/db_heleper.dart';
-import 'package:todo_app/show_modal_sheet.dart';
+import 'package:provider/provider.dart';
+import 'package:todo_app/cubit/cubit_state.dart';
+import 'package:todo_app/cubit/todo_cubit.dart';
+import 'package:todo_app/database/db_heleper.dart';
+import 'package:todo_app/provider/todo_provider.dart';
+import 'package:todo_app/view/widgets/show_modal_sheet.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
@@ -13,10 +18,9 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen> {
   final TextEditingController titleController = TextEditingController();
   late final DbHelper dbHelper;
-  List<Map<String, dynamic>> todos = [];
+  List<Map<String, dynamic>> todosList = [];
 
-  final dateTime =
-      DateFormat('EEEE, d MMMM '); // Full day name, day, full month
+  final dateTime = DateFormat('EEEE, d MMMM ');
 
   static const Color backgroundColor = Color(0xff344FA1);
   static const Color lightBlue = Color(0xffA1C0F8);
@@ -27,13 +31,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   void initState() {
     super.initState();
     dbHelper = DbHelper.getInstance();
-    fetchTodos();
-  }
-
-  Future<void> fetchTodos() async {
-    todos = await dbHelper.fetchTodo();
-    print(todos);
-    setState(() {});
+    context.read<TodoCubit>().fetchAllTodos();
   }
 
   void _showTodoBottomSheet({
@@ -75,6 +73,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print("------------------------Rebuilding--------------");
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -105,54 +104,54 @@ class _TodoListScreenState extends State<TodoListScreen> {
             const Text("TODAY'S TASKS",
                 style: TextStyle(fontSize: 16, color: lightBlue)),
             const SizedBox(height: 20),
-            Expanded(
-                child: todos.isNotEmpty
-                    ? ListView.builder(
-                        itemCount: todos.length,
-                        itemBuilder: (context, index) {
-                          final todo = todos[index];
-                          return _buildTodoItem(
-                            isChecked: todo[DbHelper.IS_DONE] == 1,
-                            onChanged: (newValue) async {
-                              await dbHelper.updateTodo(
-                                  id: todo[DbHelper.ID],
-                                  title: todo[DbHelper.TITLE],
-                                  isDone: newValue ?? false);
-                              setState(() {});
-                              fetchTodos();
-                            },
-                            title: todo[DbHelper.TITLE],
-                            dateTime: dateTime.format(
-                                DateTime.parse(todo[DbHelper.CREATED_AT])),
-                            onEdit: () {
-                              titleController.text =
-                                  todo[DbHelper.TITLE].toString();
-                              _showTodoBottomSheet(
-                                titleText: "Update Todo.!",
-                                buttonText: "Update",
-                                onTap: () async {
-                                  await dbHelper.updateTodo(
-                                    id: todo[DbHelper.ID],
-                                    title: titleController.text,
-                                  );
-                                  fetchTodos();
-                                  Navigator.pop(context);
-                                },
-                              );
-                            },
-                            onDelete: () async {
-                              await dbHelper.deleteTodo(todo[DbHelper.ID]);
-                              fetchTodos();
-                            },
-                          );
-                        },
-                      )
-                    : Center(
-                        child: Text(
-                          "You dont have any todo.!",
-                          style: TextStyle(fontSize: 12, color: lightBlue),
-                        ),
-                      )),
+            BlocBuilder<TodoCubit, CubitState>(builder: (context, state) {
+              final todosList = state.todos;
+              print("todoDataa:${state.todos}");
+              return Expanded(
+                  child: todosList.isNotEmpty
+                      ? ListView.builder(
+                          itemCount: todosList.length,
+                          itemBuilder: (context, index) {
+                            final todo = todosList[index];
+                            return _buildTodoItem(
+                              isChecked: todo[DbHelper.IS_DONE] == 1,
+                              onChanged: (value) async {
+                                context.read<TodoCubit>().toggleTodoComletion(
+                                    todId: todo[DbHelper.ID], isDone: value!);
+                              },
+                              title: todo[DbHelper.TITLE],
+                              dateTime: dateTime.format(
+                                  DateTime.parse(todo[DbHelper.CREATED_AT])),
+                              onEdit: () {
+                                titleController.text =
+                                    todo[DbHelper.TITLE].toString();
+                                _showTodoBottomSheet(
+                                  titleText: "Update Todo!",
+                                  buttonText: "Update",
+                                  onTap: () {
+                                    context.read<TodoCubit>().updateTodo(
+                                        title: titleController.text,
+                                        todoId: todo[DbHelper.ID]);
+
+                                    Navigator.pop(context);
+                                  },
+                                );
+                              },
+                              onDelete: () async {
+                                context
+                                    .read<TodoCubit>()
+                                    .deleteTodo(todoId: todo[DbHelper.ID]);
+                              },
+                            );
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            "You dont have any todo.!",
+                            style: TextStyle(fontSize: 12, color: lightBlue),
+                          ),
+                        ));
+            })
           ],
         ),
       ),
@@ -165,8 +164,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
             titleText: "Add Todo.!",
             buttonText: "save",
             onTap: () async {
-              await dbHelper.addTodo(titleController.text);
-              fetchTodos();
+              context.read<TodoCubit>().addTodo(title: titleController.text);
               Navigator.of(context).pop();
             },
           );
