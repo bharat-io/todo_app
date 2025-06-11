@@ -11,14 +11,18 @@ class TodoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void isCompleted({required int todId, required isChecked}) async {
+    await dbHelper.isTodoCompleted(id: todId, isDone: isChecked);
+    fetchTodos();
+  }
+
   void addTodos({required String title}) async {
     await dbHelper.addTodo(title);
     fetchTodos();
   }
 
-  void updateTodos(
-      {required int todId, required String todotitle, bool? isDone}) async {
-    await dbHelper.updateTodo(id: todId, title: todotitle, isDone: isDone);
+  void updateTodos({required int todId, required String todotitle}) async {
+    await dbHelper.updateTodo(id: todId, title: todotitle);
 
     fetchTodos();
   }

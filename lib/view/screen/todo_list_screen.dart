@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:todo_app/cubit/cubit_state.dart';
+import 'package:todo_app/cubit/todo_cubit.dart';
 import 'package:todo_app/database/db_heleper.dart';
 import 'package:todo_app/provider/todo_provider.dart';
 import 'package:todo_app/view/widgets/show_modal_sheet.dart';
@@ -15,7 +18,7 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen> {
   final TextEditingController titleController = TextEditingController();
   late final DbHelper dbHelper;
-  List<Map<String, dynamic>> todos = [];
+  List<Map<String, dynamic>> todosList = [];
 
   final dateTime = DateFormat('EEEE, d MMMM ');
 
@@ -28,7 +31,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   void initState() {
     super.initState();
     dbHelper = DbHelper.getInstance();
-    context.read<TodoProvider>().fetchTodos();
+    context.read<TodoCubit>().fetchAllTodos();
   }
 
   void _showTodoBottomSheet({
@@ -101,21 +104,20 @@ class _TodoListScreenState extends State<TodoListScreen> {
             const Text("TODAY'S TASKS",
                 style: TextStyle(fontSize: 16, color: lightBlue)),
             const SizedBox(height: 20),
-            Consumer(builder: (ctx, provider, __) {
-              todos = ctx.watch<TodoProvider>().getTodos();
+            BlocBuilder<TodoCubit, CubitState>(builder: (context, state) {
+              final todosList = state.todos;
+              print("todoDataa:${state.todos}");
               return Expanded(
-                  child: todos.isNotEmpty
+                  child: todosList.isNotEmpty
                       ? ListView.builder(
-                          itemCount: todos.length,
+                          itemCount: todosList.length,
                           itemBuilder: (context, index) {
-                            final todo = todos[index];
+                            final todo = todosList[index];
                             return _buildTodoItem(
                               isChecked: todo[DbHelper.IS_DONE] == 1,
-                              onChanged: (newValue) async {
-                                context.read<TodoProvider>().updateTodos(
-                                    todId: todo[DbHelper.ID],
-                                    todotitle: todo[DbHelper.TITLE],
-                                    isDone: newValue ?? false);
+                              onChanged: (value) async {
+                                context.read<TodoCubit>().toggleTodoComletion(
+                                    todId: todo[DbHelper.ID], isDone: value!);
                               },
                               title: todo[DbHelper.TITLE],
                               dateTime: dateTime.format(
@@ -124,12 +126,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                 titleController.text =
                                     todo[DbHelper.TITLE].toString();
                                 _showTodoBottomSheet(
-                                  titleText: "Update Todo.!",
+                                  titleText: "Update Todo!",
                                   buttonText: "Update",
                                   onTap: () {
-                                    context.read<TodoProvider>().updateTodos(
-                                        todId: todo[DbHelper.ID],
-                                        todotitle: titleController.text);
+                                    context.read<TodoCubit>().updateTodo(
+                                        title: titleController.text,
+                                        todoId: todo[DbHelper.ID]);
 
                                     Navigator.pop(context);
                                   },
@@ -137,8 +139,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                               },
                               onDelete: () async {
                                 context
-                                    .read<TodoProvider>()
-                                    .deleteTodos(todoId: todo[DbHelper.ID]);
+                                    .read<TodoCubit>()
+                                    .deleteTodo(todoId: todo[DbHelper.ID]);
                               },
                             );
                           },
@@ -162,11 +164,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
             titleText: "Add Todo.!",
             buttonText: "save",
             onTap: () async {
-              context
-                  .read<TodoProvider>()
-                  .addTodos(title: titleController.text);
-              // await dbHelper.addTodo(titleController.text);
-
+              context.read<TodoCubit>().addTodo(title: titleController.text);
               Navigator.of(context).pop();
             },
           );

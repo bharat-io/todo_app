@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import 'package:todo_app/cubit/todo_cubit.dart';
 import 'package:todo_app/provider/todo_provider.dart';
 import 'package:todo_app/view/screen/todo_list_screen.dart';
 
@@ -14,6 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        BlocProvider<TodoCubit>(create: (context) => TodoCubit()),
         ChangeNotifierProvider<TodoProvider>(
             create: (context) => TodoProvider())
       ],
