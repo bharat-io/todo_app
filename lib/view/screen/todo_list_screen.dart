@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+
 import 'package:todo_app/cubit/cubit_state.dart';
 import 'package:todo_app/cubit/todo_cubit.dart';
 import 'package:todo_app/database/db_heleper.dart';
-import 'package:todo_app/provider/todo_provider.dart';
 import 'package:todo_app/view/widgets/show_modal_sheet.dart';
 
 class TodoListScreen extends StatefulWidget {
@@ -31,116 +30,107 @@ class _TodoListScreenState extends State<TodoListScreen> {
   void initState() {
     super.initState();
     dbHelper = DbHelper.getInstance();
-    context.read<TodoCubit>().fetchAllTodos();
-  }
-
-  void _showTodoBottomSheet({
-    required String titleText,
-    required String buttonText,
-    required VoidCallback onTap,
-  }) {
-    showModalBottomSheet(
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      context: context,
-      builder: (_) {
-        return Container(
-          margin: EdgeInsets.all(15),
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    lightBlue,
-                    backgroundColor,
-                  ],
-                  stops: [
-                    0.5,
-                    1.0
-                  ])),
-          child: buildBottomSheet(
-            context,
-            onTap: onTap,
-            titleController: titleController,
-            titleText: titleText,
-            buttonText: buttonText,
-          ),
-        );
-      },
-    );
+    context.read<TodoCubit>().fetchAllTodos("");
   }
 
   @override
   Widget build(BuildContext context) {
-    print("------------------------Rebuilding--------------");
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Icon(Icons.menu, color: lightBlue),
         actions: const [
-          Icon(Icons.search, color: lightBlue),
+          Icon(
+            Icons.search,
+            color: lightBlue,
+          ),
           SizedBox(width: 12),
           Padding(
             padding: EdgeInsets.only(right: 12.0),
-            child: Icon(Icons.notifications, color: lightBlue),
+            child: Icon(
+              Icons.notifications,
+              color: lightBlue,
+            ),
           )
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 15).copyWith(top: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("What's up, Bharat!",
-                style: TextStyle(fontSize: 35, color: lightBlue)),
-            const SizedBox(height: 20),
-            const Text("CATEGORIES",
-                style: TextStyle(fontSize: 16, color: lightBlue)),
-            const SizedBox(height: 20),
-            _buildCategoryWidgets(),
-            const SizedBox(height: 20),
-            const Text("TODAY'S TASKS",
-                style: TextStyle(fontSize: 16, color: lightBlue)),
-            const SizedBox(height: 20),
-            BlocBuilder<TodoCubit, CubitState>(builder: (context, state) {
-              final todosList = state.todos;
-              print("todoDataa:${state.todos}");
-              return Expanded(
+      body: BlocBuilder<TodoCubit, CubitState>(builder: (context, state) {
+        final todosList = state.todos;
+        final todoCount = state.todoCount ?? {};
+
+        return Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 15).copyWith(top: 20),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text("What's up, Bharat!",
+                  style: TextStyle(fontSize: 35, color: lightBlue)),
+              const SizedBox(height: 20),
+              const Text("CATEGORIES",
+                  style: TextStyle(fontSize: 16, color: lightBlue)),
+              const SizedBox(height: 20),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: _buildCategoryWidgets(
+                  onBusinessTap: () {
+                    context.read<TodoCubit>().fetchAllTodos("business");
+                  },
+                  onPersonalTap: () {
+                    context.read<TodoCubit>().fetchAllTodos("personl");
+                  },
+                  onTapAll: () {
+                    context.read<TodoCubit>().fetchAllTodos("");
+                  },
+                  bussinesCount: (todoCount["businessCount"] ?? 0).toString(),
+                  personlCount: (todoCount["personalCount"] ?? 0).toString(),
+                  allCount: (todoCount["allCount"] ?? 0).toString(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text("TODAY'S TASKS",
+                  style: TextStyle(fontSize: 16, color: lightBlue)),
+              Expanded(
                   child: todosList.isNotEmpty
                       ? ListView.builder(
                           itemCount: todosList.length,
                           itemBuilder: (context, index) {
                             final todo = todosList[index];
                             return _buildTodoItem(
-                              isChecked: todo[DbHelper.IS_DONE] == 1,
+                              isChecked: todo.isCompleted == true,
                               onChanged: (value) async {
                                 context.read<TodoCubit>().toggleTodoComletion(
-                                    todId: todo[DbHelper.ID], isDone: value!);
+                                      todId: todo.id!,
+                                      isDone: value!,
+                                    );
                               },
-                              title: todo[DbHelper.TITLE],
-                              dateTime: dateTime.format(
-                                  DateTime.parse(todo[DbHelper.CREATED_AT])),
+                              title: todo.title!,
+                              dateTime: dateTime
+                                  .format(DateTime.parse(todo.createdAt!)),
                               onEdit: () {
-                                titleController.text =
-                                    todo[DbHelper.TITLE].toString();
-                                _showTodoBottomSheet(
-                                  titleText: "Update Todo!",
-                                  buttonText: "Update",
-                                  onTap: () {
-                                    context.read<TodoCubit>().updateTodo(
-                                        title: titleController.text,
-                                        todoId: todo[DbHelper.ID]);
+                                titleController.text = todo.title.toString();
 
-                                    Navigator.pop(context);
-                                  },
+                                showModalBottomSheet(
+                                  backgroundColor: Colors.transparent,
+                                  isScrollControlled: true,
+                                  context: context,
+                                  builder: (_) => TodoFormBottomSheet(
+                                    title: " Update-todo-detail!",
+                                    titleController: titleController,
+                                    initialCategory: "personl",
+                                    onSave: (title, category) {
+                                      context.read<TodoCubit>().updateTodo(
+                                          todoId: todo.id!,
+                                          title: title,
+                                          categoryText: category);
+                                    },
+                                  ),
                                 );
                               },
                               onDelete: () async {
                                 context
                                     .read<TodoCubit>()
-                                    .deleteTodo(todoId: todo[DbHelper.ID]);
+                                    .deleteTodo(todoId: todo.id!);
                               },
                             );
                           },
@@ -150,23 +140,28 @@ class _TodoListScreenState extends State<TodoListScreen> {
                             "You dont have any todo.!",
                             style: TextStyle(fontSize: 12, color: lightBlue),
                           ),
-                        ));
-            })
-          ],
-        ),
-      ),
+                        ))
+            ]));
+      }),
       floatingActionButton: FloatingActionButton(
         backgroundColor: accentColor,
         shape: const CircleBorder(),
         onPressed: () {
           titleController.clear();
-          _showTodoBottomSheet(
-            titleText: "Add Todo.!",
-            buttonText: "save",
-            onTap: () async {
-              context.read<TodoCubit>().addTodo(title: titleController.text);
-              Navigator.of(context).pop();
-            },
+          showModalBottomSheet(
+            backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            context: context,
+            builder: (_) => TodoFormBottomSheet(
+              title: " todo-detail!",
+              titleController: titleController,
+              initialCategory: "personl",
+              onSave: (title, category) {
+                context
+                    .read<TodoCubit>()
+                    .addTodo(title: title, categoryText: category);
+              },
+            ),
           );
         },
         child: const Icon(Icons.add, color: Colors.white),
@@ -174,10 +169,21 @@ class _TodoListScreenState extends State<TodoListScreen> {
     );
   }
 
-  Widget _buildCategoryWidgets() {
-    Widget categoryCard(String label) => Container(
+  Widget _buildCategoryWidgets({
+    required Function onBusinessTap,
+    required Function onPersonalTap,
+    required Function onTapAll,
+    required String bussinesCount,
+    required String personlCount,
+    required String allCount,
+  }) {
+    Widget categoryCard(
+      String label, {
+      required String count,
+    }) =>
+        Container(
           padding: const EdgeInsets.all(12),
-          width: 161,
+          width: 140,
           height: 100,
           decoration: BoxDecoration(
             color: cardColor,
@@ -194,7 +200,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("40 tasks",
+              Text("$count tasks",
                   style: TextStyle(fontSize: 14, color: lightBlue)),
               const SizedBox(height: 4),
               Text(label,
@@ -207,9 +213,23 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
     return Row(
       children: [
-        categoryCard("Business"),
+        InkWell(
+            onTap: () {
+              onBusinessTap();
+            },
+            child: categoryCard("Business", count: bussinesCount)),
         const SizedBox(width: 8),
-        categoryCard("Personal"),
+        InkWell(
+            onTap: () {
+              onPersonalTap();
+            },
+            child: categoryCard("Personal", count: personlCount)),
+        const SizedBox(width: 8),
+        InkWell(
+            onTap: () {
+              onTapAll();
+            },
+            child: categoryCard("All", count: allCount)),
       ],
     );
   }
