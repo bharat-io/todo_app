@@ -112,7 +112,3 @@ const Color accentColor = Color(0xffEB05FF);
 flutter pub get
 flutter run
 
-👨‍💻 Author
-
-Bharat Yadav
-Flutter Developer
